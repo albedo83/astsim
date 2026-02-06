@@ -1,12 +1,31 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component } from '@angular/core';
+import { Viewport } from './features/viewport/viewport';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.scss'
+  imports: [Viewport],
+  template: `
+    <main>
+      <h1>🔭 AstroSim WebGPU</h1>
+      <app-viewport />
+    </main>
+  `,
+  styles: [
+    `
+      main {
+        min-height: 100vh;
+        background: #0a0a0f;
+        color: white;
+        font-family: system-ui, sans-serif;
+      }
+
+      h1 {
+        text-align: center;
+        padding: 20px;
+        margin: 0;
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+      }
+    `,
+  ],
 })
-export class App {
-  protected readonly title = signal('astro-sim');
-}
+export class App {}

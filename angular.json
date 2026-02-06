@@ -31,7 +31,10 @@
             ],
             "styles": [
               "src/styles.scss"
-            ]
+            ],
+            "loader": {
+              ".wgsl": "text"
+            }
           },
           "configurations": {
             "production": {

@@ -1,0 +1,9 @@
+<div class="viewport-container">
+  <!-- Le canvas WebGPU -->
+  <canvas #gpuCanvas width="800" height="600" [class.hidden]="!isReady()"> </canvas>
+
+  <!-- Message de statut -->
+  <div class="status" [class.error]="hasError()">
+    {{ statusMessage() }}
+  </div>
+</div>
