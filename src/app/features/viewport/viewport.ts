@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { WebGPU } from '../../core/webgpu';
 import shaderCode from '../../../assets/shaders/triangle.wgsl?raw';
 
@@ -7,7 +7,7 @@ import shaderCode from '../../../assets/shaders/triangle.wgsl?raw';
   templateUrl: './viewport.html',
   styleUrl: './viewport.scss',
 })
-export class Viewport implements OnInit {
+export class Viewport implements OnInit, OnDestroy {
   // Injection du service
   private webgpu = inject(WebGPU);
 
@@ -41,21 +41,33 @@ export class Viewport implements OnInit {
       this.hasError.set(true);
       return;
     }
-console.log('Shader code:', shaderCode);
-    // Étape 3 : Créer le pipeline de rendu
+
+// Étape 3 : Créer le pipeline avec notre shader
     this.statusMessage.set('Compilation des shaders...');
     const pipeline = this.webgpu.createRenderPipeline(shaderCode);
 
     if (!pipeline) {
       this.statusMessage.set('Erreur de création du pipeline');
-      this.hasError.set(true);
       return;
     }
 
-    // Étape 4 : Dessiner le triangle !
-    this.webgpu.renderTriangle(context, pipeline);
+    // Étape 4 : Créer les uniforms (le tuyau CPU → GPU)
+    this.statusMessage.set('Préparation des uniforms...');
+    const uniformsReady = this.webgpu.createUniforms(pipeline);
+
+    if (!uniformsReady) {
+      this.statusMessage.set('Erreur de création des uniforms');
+      return;
+    }
+
+    // Étape 5 : Lancer la boucle de rendu !
+    this.webgpu.startRenderLoop(context, pipeline);
 
     this.isReady.set(true);
-    this.statusMessage.set('WebGPU opérationnel ! 🚀');
+    this.statusMessage.set('Rendu en cours 🎬');
+  }
+
+  ngOnDestroy(): void {
+    this.webgpu.stopRenderLoop();
   }
 }

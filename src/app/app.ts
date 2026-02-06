@@ -6,7 +6,6 @@ import { Viewport } from './features/viewport/viewport';
   imports: [Viewport],
   template: `
     <main>
-      <h1>🔭 AstroSim WebGPU</h1>
       <app-viewport />
     </main>
   `,

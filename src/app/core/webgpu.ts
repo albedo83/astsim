@@ -18,6 +18,10 @@ export class WebGPU {
   private adapter: GPUAdapter | null = null;
   private device: GPUDevice | null = null;
   private canvasFormat: GPUTextureFormat = 'bgra8unorm';
+    // --- Animation & Uniforms ---
+  private uniformBuffer: GPUBuffer | null = null;
+  private bindGroup: GPUBindGroup | null = null;
+  private animationId: number | null = null;
 
   /**
    * Initialise WebGPU.
@@ -193,30 +197,96 @@ export class WebGPU {
   }
 
   /**
-   * Dessine un triangle.
+   * Crée le Uniform Buffer et le Bind Group.
+   *
+   * Un Uniform Buffer, c'est une petite zone mémoire sur le GPU
+   * où TypeScript peut écrire des valeurs que le shader va lire.
+   *
+   * Le Bind Group fait le lien : "ce buffer → va dans @group(0) @binding(0)"
    */
-  renderTriangle(context: GPUCanvasContext, pipeline: GPURenderPipeline): void {
-    if (!this.device) return;
+  createUniforms(pipeline: GPURenderPipeline): boolean {
+    if (!this.device) return false;
 
-    const commandEncoder = this.device.createCommandEncoder();
+    // Créer le buffer (4 octets = 1 float32 pour le temps)
+    this.uniformBuffer = this.device.createBuffer({
+      label: 'Uniforms buffer',
+      size: 4, // 1 x float32 = 4 bytes
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
 
-    const renderPass = commandEncoder.beginRenderPass({
-      colorAttachments: [{
-        view: context.getCurrentTexture().createView(),
-        clearValue: { r: 0.05, g: 0.05, b: 0.15, a: 1.0 },
-        loadOp: 'clear',
-        storeOp: 'store'
+    // Créer le bind group : connecter le buffer au shader
+    this.bindGroup = this.device.createBindGroup({
+      label: 'Uniforms bind group',
+      layout: pipeline.getBindGroupLayout(0), // group(0) du shader
+      entries: [{
+        binding: 0,           // @binding(0) du shader
+        resource: {
+          buffer: this.uniformBuffer
+        }
       }]
     });
 
-    // Utiliser notre pipeline
-    renderPass.setPipeline(pipeline);
-    
-    // Dessiner 3 vertices = 1 triangle
-    renderPass.draw(3);
+    console.log('✅ Uniforms créés');
+    return true;
+  }
 
-    renderPass.end();
+/**
+   * Lance la boucle de rendu continue.
+   * Comme le live view de ta caméra astro : 
+   * ça tourne en permanence et met à jour l'image.
+   */
+  startRenderLoop(context: GPUCanvasContext, pipeline: GPURenderPipeline): void {
+    const startTime = performance.now();
 
-    this.device.queue.submit([commandEncoder.finish()]);
+    const frame = () => {
+      if (!this.device || !this.uniformBuffer || !this.bindGroup) return;
+
+      // Calculer le temps écoulé en secondes
+      const time = (performance.now() - startTime) / 1000;
+
+      // Écrire le temps dans le uniform buffer
+      // C'est comme tourner la molette "exposition" en continu
+      this.device.queue.writeBuffer(
+        this.uniformBuffer,
+        0,                              // offset dans le buffer
+        new Float32Array([time])        // les données à écrire
+      );
+
+      // --- Dessiner une frame ---
+      const commandEncoder = this.device.createCommandEncoder();
+
+      const renderPass = commandEncoder.beginRenderPass({
+        colorAttachments: [{
+          view: context.getCurrentTexture().createView(),
+          clearValue: { r: 0.05, g: 0.05, b: 0.15, a: 1.0 },
+          loadOp: 'clear',
+          storeOp: 'store'
+        }]
+      });
+
+      renderPass.setPipeline(pipeline);
+      renderPass.setBindGroup(0, this.bindGroup);  // Brancher les uniforms !
+      renderPass.draw(3);
+      renderPass.end();
+
+      this.device.queue.submit([commandEncoder.finish()]);
+
+      // Demander la frame suivante (~60fps)
+      this.animationId = requestAnimationFrame(frame);
+    };
+
+    // Lancer !
+    frame();
+  }
+
+  /**
+   * Arrête la boucle de rendu.
+   */
+  stopRenderLoop(): void {
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+      console.log('⏹️ Boucle de rendu arrêtée');
+    }
   }
 }
