@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { WebGPU } from '../../core/webgpu';
-import shaderCode from '../../../assets/shaders/triangle.wgsl?raw';
+import shaderCode from '../../../assets/shaders/fullscreen-quad.wgsl?raw';
 
 @Component({
   selector: 'app-viewport',

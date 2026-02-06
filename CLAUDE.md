@@ -90,27 +90,29 @@ Lis-le intégralement avant toute implémentation. Il contient l'architecture de
 ### ✅ Fait
 
 - Projet Angular 21 initialisé avec pnpm
-- Pipeline WebGPU de base fonctionnel (canvas bleu nuit affiché)
-- Service `WebGPU` (`src/app/core/webgpu.ts`) : initialisation GPU, configuration canvas, clear color
+- Service `WebGPU` (`src/app/core/webgpu.ts`) : init GPU, canvas, pipeline, uniforms, render loop
 - Composant `Viewport` (`src/app/features/viewport/viewport.ts`) : canvas avec signals d'état
 - Configuration TypeScript pour @webgpu/types
-- Fichiers .wgsl configurés avec imports TypeScript
-- Propriété `canvasFormat` stockée pour le pipeline
+- Fichiers .wgsl configurés avec imports TypeScript (`src/types/wgsl.d.ts`)
 - Déployé sur VPS
+- Fullscreen quad (`src/assets/shaders/fullscreen-quad.wgsl`) : 2 triangles couvrant tout l'écran
+- Coordonnées UV interpolées et passées au fragment shader via `VertexOutput`
+- Uniform buffer `time` (f32) envoyé du CPU au GPU chaque frame
+- Boucle de rendu avec `requestAnimationFrame` (`startRenderLoop()` / `stopRenderLoop()`)
+- Diagnostic de compilation shader (`getCompilationInfo()`)
 
 ### 🔜 Prochaine étape
 
-Rendu d'un triangle avec :
-- Vertex shader + Fragment shader en WGSL
-- Compilation des shaders
-- Création du render pipeline
-- Render pass avec le triangle
+Chargement et affichage de textures :
+- Charger une image et la plaquer sur le quad via les UV
+- Préparer la base pour les tuiles HiPS
 
 ### 🗺️ Roadmap globale (voir doc de conception pour les détails)
 
 1. ~~Bootstrap WebGPU + canvas bleu~~ ✅
-2. Triangle + shaders de base ← **on est ici**
-3. Quad plein écran (fullscreen quad)
+2. ~~Triangle + shaders de base~~ ✅
+3. ~~Quad plein écran (fullscreen quad)~~ ✅
+4. Chargement et affichage de textures ← **on est ici**
 4. Chargement et affichage de textures
 5. Système de coordonnées célestes (RA/Dec)
 6. Chargement de tuiles HiPS
@@ -127,17 +129,21 @@ Rendu d'un triangle avec :
 astro-sim/
 ├── CLAUDE.md                          ← ce fichier
 ├── AstroSim_WebGPU.md                 ← document de conception
+├── vite.config.ts                     ← config Vite (assets .wgsl)
 ├── src/
 │   ├── app/
 │   │   ├── core/
-│   │   │   └── webgpu.ts              ← service WebGPU (init, device, canvas)
-│   │   ├── features/
-│   │   │   └── viewport/
-│   │   │       ├── viewport.ts        ← composant canvas WebGPU
-│   │   │       ├── viewport.html
-│   │   │       └── viewport.scss
-│   │   └── shaders/                   ← fichiers .wgsl
-│   └── ...
+│   │   │   └── webgpu.ts              ← service WebGPU (init, device, canvas, pipeline, render loop)
+│   │   └── features/
+│   │       └── viewport/
+│   │           ├── viewport.ts        ← composant canvas WebGPU
+│   │           ├── viewport.html
+│   │           └── viewport.scss
+│   ├── assets/
+│   │   └── shaders/
+│   │       └── fullscreen-quad.wgsl    ← shader quad plein écran (vertex + fragment + UV)
+│   └── types/
+│       └── wgsl.d.ts                  ← déclarations TS pour imports .wgsl
 ```
 
 ---

@@ -1,10 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 /**
- * Service d'initialisation WebGPU
- *
- * ÉTAPE 1 : On vérifie juste que WebGPU est disponible et on récupère un device.
- * C'est l'équivalent de "est-ce que mon télescope est branché et allumé ?"
+ * Service WebGPU — gère le GPU, le pipeline de rendu et la boucle d'affichage.
  */
 @Injectable({
   providedIn: 'root',
@@ -18,7 +15,6 @@ export class WebGPU {
   private adapter: GPUAdapter | null = null;
   private device: GPUDevice | null = null;
   private canvasFormat: GPUTextureFormat = 'bgra8unorm';
-    // --- Animation & Uniforms ---
   private uniformBuffer: GPUBuffer | null = null;
   private bindGroup: GPUBindGroup | null = null;
   private animationId: number | null = null;
@@ -28,28 +24,13 @@ export class WebGPU {
    * Retourne true si tout est OK, false sinon.
    */
   async initialize(): Promise<boolean> {
-    // Étape 1 : Le navigateur supporte-t-il WebGPU ?
-    console.log('🔍 Vérification WebGPU...');
-    console.log('navigator.gpu:', navigator.gpu);
-    console.log('typeof navigator.gpu:', typeof navigator.gpu);
-
     if (!navigator.gpu) {
       this.isSupported.set(false);
-      const userAgent = navigator.userAgent;
-      const isSecureContext = window.isSecureContext;
-      this.error.set(
-        `WebGPU n'est pas supporté par ce navigateur.\n` +
-          `User-Agent: ${userAgent}\n` +
-          `Secure context: ${isSecureContext}\n` +
-          `navigator.gpu: ${navigator.gpu}`,
-      );
-      console.error('❌ navigator.gpu est undefined/null');
+      this.error.set('WebGPU n\'est pas supporté par ce navigateur.');
       return false;
     }
 
     try {
-      // Étape 2 : Demander un "adapter" (représentation du GPU physique)
-      // C'est comme demander "quel télescope est disponible ?"
       this.adapter = await navigator.gpu.requestAdapter();
 
       if (!this.adapter) {
@@ -61,8 +42,6 @@ export class WebGPU {
 
       console.log('✅ Adapter obtenu:', this.adapter.info);
 
-      // Étape 3 : Demander un "device" (notre interface de travail)
-      // C'est comme obtenir la télécommande du télescope
       this.device = await this.adapter.requestDevice();
 
       // Écouter les erreurs GPU (très utile pour le debug)
@@ -115,51 +94,6 @@ export class WebGPU {
   }
 
   /**
-   * Remplit le canvas avec une couleur unie.
-   * C'est notre premier "render pass" - le plus simple possible.
-   *
-   * @param context - Le contexte WebGPU du canvas
-   * @param color - Couleur RGBA (valeurs entre 0 et 1)
-   */
-  clearWithColor(
-    context: GPUCanvasContext,
-    color: { r: number; g: number; b: number; a: number },
-  ): void {
-    if (!this.device) return;
-
-    // Obtenir la texture actuelle du canvas (là où on va dessiner)
-    const textureView = context.getCurrentTexture().createView();
-
-    // Créer un "command encoder" - c'est comme un enregistreur de commandes
-    // On enregistre ce qu'on veut faire, puis on envoie tout d'un coup au GPU
-    const commandEncoder = this.device.createCommandEncoder();
-
-    // Créer un "render pass" - une passe de rendu
-    // Pour l'instant, on fait juste un "clear" (effacement avec une couleur)
-    const renderPass = commandEncoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: textureView,
-          clearValue: color, // La couleur de fond
-          loadOp: 'clear', // Effacer avec clearValue
-          storeOp: 'store', // Garder le résultat
-        },
-      ],
-    });
-
-    // Fin du render pass (on n'a rien dessiné, juste effacé)
-    renderPass.end();
-
-    // Soumettre les commandes au GPU
-    this.device.queue.submit([commandEncoder.finish()]);
-  }
-
-  // Getter pour le device (on en aura besoin plus tard)
-  getDevice(): GPUDevice | null {
-    return this.device;
-  }
-
-  /**
    * Crée un pipeline de rendu à partir du code WGSL.
    * 
    * Un pipeline = la recette complète pour dessiner :
@@ -171,13 +105,20 @@ export class WebGPU {
 
     // Compiler le code WGSL en module shader
     const shaderModule = this.device.createShaderModule({
-      label: 'Triangle shader',
+      label: 'Fullscreen quad shader',
       code: shaderCode
+    });
+
+    // Vérifier les erreurs de compilation (async, non-bloquant)
+    shaderModule.getCompilationInfo().then(info => {
+      for (const msg of info.messages) {
+        console.warn(`⚠️ Shader ${msg.type}: ${msg.message} [ligne ${msg.lineNum}:${msg.linePos}]`);
+      }
     });
 
     // Créer le pipeline
     const pipeline = this.device.createRenderPipeline({
-      label: 'Triangle pipeline',
+      label: 'Fullscreen quad pipeline',
       layout: 'auto',
       vertex: {
         module: shaderModule,
@@ -266,7 +207,7 @@ export class WebGPU {
 
       renderPass.setPipeline(pipeline);
       renderPass.setBindGroup(0, this.bindGroup);  // Brancher les uniforms !
-      renderPass.draw(3);
+      renderPass.draw(6);
       renderPass.end();
 
       this.device.queue.submit([commandEncoder.finish()]);
