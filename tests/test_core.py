@@ -118,6 +118,14 @@ class TestASTSimulator:
         result = sim.evaluate(node)
         assert result == 10
     
+    def test_undefined_variable(self):
+        """Test that undefined variables raise an error"""
+        sim = ASTSimulator()
+        node = ASTNode('identifier', 'undefined_var')
+        
+        with pytest.raises(ValueError, match="Undefined variable"):
+            sim.evaluate(node)
+    
     def test_expression_with_variables(self):
         """Test evaluating expressions with variables"""
         sim = ASTSimulator()
@@ -150,4 +158,23 @@ class TestASTSimulator:
         node = ASTNode('unknown_type', 42)
         
         with pytest.raises(ValueError, match="Unknown node type"):
+            sim.evaluate(node)
+    
+    def test_binary_op_invalid_children_count(self):
+        """Test that binary operators with wrong number of children raise an error"""
+        sim = ASTSimulator()
+        # Only one child
+        node = ASTNode('binary_op', '+', [ASTNode('literal', 5)])
+        
+        with pytest.raises(ValueError, match="exactly 2 children"):
+            sim.evaluate(node)
+        
+        # Three children
+        node = ASTNode('binary_op', '+', [
+            ASTNode('literal', 5),
+            ASTNode('literal', 3),
+            ASTNode('literal', 2)
+        ])
+        
+        with pytest.raises(ValueError, match="exactly 2 children"):
             sim.evaluate(node)

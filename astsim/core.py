@@ -50,9 +50,13 @@ class ASTSimulator:
             return node.value
         
         elif node.node_type == 'identifier':
-            return self.variables.get(node.value, 0)
+            if node.value not in self.variables:
+                raise ValueError(f"Undefined variable: {node.value}")
+            return self.variables[node.value]
         
         elif node.node_type == 'binary_op':
+            if len(node.children) != 2:
+                raise ValueError(f"Binary operator requires exactly 2 children, got {len(node.children)}")
             left = self.evaluate(node.children[0])
             right = self.evaluate(node.children[1])
             
